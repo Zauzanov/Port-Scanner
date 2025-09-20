@@ -32,3 +32,33 @@ def resolve_target(target: str) -> str:
             return socket.gethostbyname(target)
         except socket.gaierror as e:
             raise ValueError(f"Cannot resolve target '{target}: {e}") from e
+
+def parse_ports(port_string: str) -> List[int]:
+    ports = set()
+    for part in port_string.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            lo, hi = part.split("-", 1)
+            lo_i = int(lo)
+            hi_i = int(hi)
+            if lo_i < 1 or hi_i > 65535 or lo_i > hi_i:
+                raise ValueError(f"Invalid port range: {part}")
+            ports.update(range(lo_i, hi_i + 1))
+        else:
+            p = int(part)
+            if p < 1 or p > 65535:
+                raise ValueError(f"Invalid port number: {p}")
+            ports.add(p)
+    return sorted(ports)
+
+TCP_FLAGS = {
+    "FIN": 0x01,
+    "SYN": 0x02,
+    "RST": 0x04,
+    "PSH": 0x08,
+    "ACK": 0x10,
+    "URG": 0x20,
+}
+
