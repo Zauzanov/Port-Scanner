@@ -62,3 +62,17 @@ TCP_FLAGS = {
     "URG": 0x20,
 }
 
+def syn_scan_once(iface: str, dst_ip: str, port: int, timeout: float) -> Tuple[int, str]:
+    pkt = scapy.IP(dst=dst_ip) / scapy.TCP(dport=port, flags="S")
+    resp = scapy.sr1(pkt, timeout=timeout, iface=iface)
+    if resp is None:
+        return port, "filtered/no-response"
+    if resp.haslayer(scapy.TCP):
+        flags =  int(resp[scapy.TCP].flags)
+        if flags == (TCP_FLAGS["SYN"] | TCP_FLAGS["ACK"]):
+            rst = scapy.IP(dst=dst_ip) / scapy.TCP(dport=port, flags="R")
+            scapy.send(rst, verbose=False, iface=iface)
+            return port, "open"
+        elif flags & TCP_FLAGS["RST"]:
+            return port, "closed"
+    return port, "unknown"
