@@ -89,3 +89,18 @@ def ack_scan_once(iface: str, dst_ip: str, port: int, timeout: float) -> Tuple[i
             return port, "unfiltered"
     return port, "unknown" 
 
+
+def fin_scan_once(iface: str, dst_ip: str, port: int, timeout: float) -> Tuple[int, str]:
+    pkt = scapy.IP(dst=dst_ip) / scapy.TCP(dport=port, flags="F")
+    resp = scapy.sr1(pkt, timeout=timeout, iface=iface)
+    if resp is None:
+        return port, "open | filtered"
+    if resp.haslayer(scapy.TCP):
+        flags = int(resp[scapy.TCP].flags)
+        if flags & TCP_FLAGS["RST"]:
+            return port, "closedd"
+    return port, "unknown"
+
+
+
+def xmas_scan_once
