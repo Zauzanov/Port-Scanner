@@ -127,3 +127,18 @@ def tcp_connect_once(dst_ip: str, port: int, timeout: float) -> Tuple[int, str]:
     except Exception as e:
         return port, f"error:{e}"
     
+
+
+
+SCAN_FN = {
+    "syn" : syn_scan_once,
+    "ack" : ack_scan_once,
+    "fin" : fin_scan_once,
+    'xmas' : xmas_scan_once,
+    "tcpconnect" : tcp_connect_once, 
+}
+
+
+
+
+
