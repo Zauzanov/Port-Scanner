@@ -103,4 +103,27 @@ def fin_scan_once(iface: str, dst_ip: str, port: int, timeout: float) -> Tuple[i
 
 
 
-def xmas_scan_once
+def xmas_scan_once(iface: str, dst_ip: str, port: int, timeout: float) -> Tuple[int, str]:
+    pkt = scapy.IP(dst=dst_ip) / scapy.TCP(dport=port, flags="FPU")
+    resp = scapy.sr1(pkt, timeout=timeout, iface=iface)
+    if resp is None:
+        return port, "open |filtered"
+    if resp.haslayer(scapy.TCP):
+        flags = int(resp[scapy.TCP].flags)
+        if flags & TCP_FLAGS["RST"]:
+            return port, "closed"
+    return port, "unknown"
+
+
+def tcp_connect_once(dst_ip: str, port: int, timeout: float) -> Tuple[int, str]:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    try: 
+        sock.connect((dst_ip, port))
+        sock.close
+        return port, "open"
+    except(ConnectionRefusedError, socket.timeout):
+        return port, "closed"
+    except Exception as e:
+        return port, f"error:{e}"
+    
