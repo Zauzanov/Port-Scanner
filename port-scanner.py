@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
 import socket 
 import sys
 import argparse
 import ipaddress
 import sys 
 import time 
-from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Sequence, Tuple 
 import scapy.all as scapy 
+import os
 
 scapy.conf.verb = 0
 
@@ -21,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-s", "--scan-type", choices=["syn", "ack", "fin", "xmas", "tcpconnect"], default="syn", help="Scan type (default: syn)")
     parser.add_argument("-T", "--threads", type=int, default=50, help="Number of worker threads (default: 50)")
     parser.add_argument("--timeout", type=float, default=1.0, help="Probe timeout seconds (default: 1.0)")
-    return parser.parse_args
+    return parser.parse_args()
 
 def resolve_target(target: str) -> str:
     try:
@@ -164,7 +165,42 @@ def scan_ports_concurrent(iface: str | None, dst_ip: str, ports: Sequence[int], 
     return results
 
 
+def main():
+    args = parse_args()
 
+    print ("ATTENTION: only scan systems you own or have permission to test!")
+    try:
+        dst_ip = resolve_target(args.target)
+    except ValueError as e:
+        print("ERROR:", e, file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        ports = parse_ports(args.ports)
+    except ValueError as e:
+        print("ERROR parsing ports:", e, file=sys.stderr)
+        sys.exit(1)
+    
+    if args.scan_type != "tcpconnect":
+        if not (hasattr(scapy, "conf") and scapy.conf.use_pcap or os.geteuid() == 0):
+            print("ATTENTION: raw packet scans(SYN/FIN/XMAS/ACK) require root privileges!")
+    print(f"Scanning {dst_ip} ports={len(ports)} type={args.scan_type} iface={args.iface or scapy.conf.iface}")
+
+    start = time.time()
+    results = scan_ports_concurrent(args.iface, dst_ip, ports, args.scan_type, args.threads, args.timeout)
+    duration = time.time() - start
+
+    for port, status in results:
+        if port == -1:
+            print(status)
+        else:
+            print(f"{port:5d} {status}")
+    print(f"Done in {duration:.2f}s")
+
+
+
+if __name__ == "__main__":
+    main()
 
 
 
