@@ -140,5 +140,32 @@ SCAN_FN = {
 
 
 
+def scan_ports_concurrent(iface: str | None, dst_ip: str, ports: Sequence[int], scan_type: str, threads: int, timeout: float) -> List[Tuple[int, str]]:
+    if iface is None:
+        iface = scapy.conf.iface
+    
+    fn = SCAN_FN[scan_type]
+
+    results: List[Tuple[int, str]] = []
+    workers = min(threads, max(1, len(ports)))
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futures = []
+        for p in ports:
+            if scan_type == "tcpconnect":
+                futures.append(ex.submit(fn, dst_ip, p, timeout))
+            else:
+                futures.append(ex.submit(fn, iface, dst_ip, p, timeout))
+        for fut in as_completed(futures):
+            try:
+                results.append(fut.result())
+            except Exception as e:
+                results.append((-1, f"error:{e}"))
+    results.sort(key=lambda x: x[0])
+    return results
+
+
+
+
+
 
 
